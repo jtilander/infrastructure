@@ -1,0 +1,72 @@
+#
+# Setup Sentry.
+#
+data:
+    image: busybox
+    command: tail -f /dev/null
+    volumes:
+        - /var/lib/postgresql
+        - /data
+    restart: always
+
+postgres:
+    image: postgres:9.4.1
+    environment:
+        - POSTGRES_PASSWORD=secret
+        - PGUSER=sentry
+    expose:
+        - "5432"
+    volumes_from:
+        - data
+    restart: always
+
+redis:
+    image: redis
+    volumes_from:
+        - data
+    expose:
+        - "6379"
+    restart: always
+
+beat:
+    image: sentry
+    environment:
+        - POSTGRES_PASSWORD=secret
+        - PGPASSWORD=secret
+        - PGHOST=postgres
+        - PGUSER=sentry
+        - SENTRY_ADMIN_EMAIL=jim@tilander.org
+    links:
+        - postgres
+        - redis
+    restart: always
+    command: sentry celery beat
+
+worker:
+    image: sentry
+    environment:
+        - POSTGRES_PASSWORD=secret
+        - PGPASSWORD=secret
+        - PGHOST=postgres
+        - PGUSER=sentry
+        - SENTRY_ADMIN_EMAIL=jim@tilander.org
+    links:
+        - postgres
+        - redis
+    restart: always
+    command: sentry celery worker
+
+sentry:
+    image: sentry
+    environment:
+        - POSTGRES_PASSWORD=secret
+        - PGPASSWORD=secret
+        - PGHOST=postgres
+        - PGUSER=sentry
+        - SENTRY_ADMIN_EMAIL=jim@tilander.org
+    links:
+        - postgres
+        - redis
+    ports:
+        - "9999:9000"
+    restart: always
